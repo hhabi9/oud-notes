@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A calm, local-first place for your notes.">
+  <title>Oud Notes</title>
+  <script>document.documentElement.dataset.theme = localStorage.getItem('oud-theme') || 'light';</script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <header class="brand-row">
+        <a class="brand" href="/" aria-label="Oud Notes home">
+          <span class="brand-mark">O</span>
+          <span>Oud Notes</span>
+        </a>
+        <button class="icon-button mobile-only" id="close-sidebar" aria-label="Close menu">×</button>
+      </header>
+
+      <button class="new-note-button" id="new-note">
+        <span>＋</span> New note
+        <kbd>⌘ N</kbd>
+      </button>
+
+      <nav class="folder-nav" aria-label="Note folders">
+        <button class="folder-link active" data-folder="">
+          <span><span class="folder-icon">◫</span> All notes</span>
+          <span class="count" id="all-count">0</span>
+        </button>
+        <p class="nav-label">Folders</p>
+        <div id="folder-list"></div>
+      </nav>
+
+      <footer class="sidebar-footer">
+        <div><span class="status-dot"></span> Stored on this device</div>
+        <button class="icon-button" id="theme-toggle" aria-label="Toggle dark mode">☾</button>
+      </footer>
+    </aside>
+
+    <section class="notes-column">
+      <header class="list-header">
+        <button class="icon-button mobile-only" id="open-sidebar" aria-label="Open menu">☰</button>
+        <div class="search-wrap">
+          <span aria-hidden="true">⌕</span>
+          <input id="search" type="search" placeholder="Search your notes…" autocomplete="off">
+          <kbd>⌘ K</kbd>
+        </div>
+      </header>
+      <div class="list-title-row">
+        <div>
+          <p class="eyebrow">Your library</p>
+          <h1 id="list-title">All notes</h1>
+        </div>
+        <span class="note-total" id="note-total">0 notes</span>
+      </div>
+      <div class="note-list" id="note-list" aria-live="polite"></div>
+    </section>
+
+    <section class="editor-column" id="editor-column">
+      <div class="empty-state" id="empty-state">
+        <div class="empty-art">✦</div>
+        <h2>A quiet place for bright ideas.</h2>
+        <p>Select a note, or create your first one.</p>
+        <button class="secondary-button" id="empty-new-note">Create a note</button>
+      </div>
+
+      <article class="editor hidden" id="editor">
+        <header class="editor-toolbar">
+          <button class="back-button mobile-only" id="back-to-list">‹ Notes</button>
+          <div class="save-state" id="save-state"><span></span> Saved</div>
+          <div class="toolbar-actions">
+            <button class="text-button" id="preview-toggle">Preview</button>
+            <button class="icon-button" id="pin-note" aria-label="Pin note" title="Pin note">♧</button>
+            <button class="icon-button" id="export-note" aria-label="Export note" title="Export Markdown">⇩</button>
+            <button class="icon-button danger" id="delete-note" aria-label="Delete note" title="Delete note">⌫</button>
+          </div>
+        </header>
+
+        <div class="editor-scroll">
+          <input class="title-input" id="note-title" aria-label="Note title" maxlength="200" placeholder="Untitled note">
+          <div class="note-meta">
+            <label>
+              <span>Folder</span>
+              <input id="note-folder" maxlength="80" placeholder="None" list="folder-options">
+              <datalist id="folder-options"></datalist>
+            </label>
+            <label>
+              <span>Tags</span>
+              <input id="note-tags" placeholder="ideas, work, reading">
+            </label>
+          </div>
+          <div class="writing-area">
+            <textarea id="note-content" aria-label="Note content" placeholder="Start writing… Markdown is welcome."></textarea>
+            <div class="markdown-preview hidden" id="markdown-preview"></div>
+          </div>
+        </div>
+        <footer class="editor-footer">
+          <span id="updated-time">Updated just now</span>
+          <span id="word-count">0 words</span>
+        </footer>
+      </article>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status"></div>
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</body>
+</html>

@@ -1,0 +1,324 @@
+const state = {
+  notes: [],
+  selectedId: null,
+  folder: '',
+  search: '',
+  saveTimers: new Map(),
+  requestVersions: new Map(),
+  preview: false,
+};
+
+const $ = (selector) => document.querySelector(selector);
+const elements = {
+  noteList: $('#note-list'),
+  editor: $('#editor'),
+  emptyState: $('#empty-state'),
+  title: $('#note-title'),
+  content: $('#note-content'),
+  folder: $('#note-folder'),
+  tags: $('#note-tags'),
+  folderList: $('#folder-list'),
+  folderOptions: $('#folder-options'),
+  allCount: $('#all-count'),
+  noteTotal: $('#note-total'),
+  listTitle: $('#list-title'),
+  search: $('#search'),
+  saveState: $('#save-state'),
+  pin: $('#pin-note'),
+  preview: $('#markdown-preview'),
+  previewToggle: $('#preview-toggle'),
+  updatedTime: $('#updated-time'),
+  wordCount: $('#word-count'),
+  editorColumn: $('#editor-column'),
+  sidebar: $('#sidebar'),
+  toast: $('#toast'),
+};
+
+async function api(path, options = {}) {
+  const response = await fetch(path, {
+    headers: { 'Content-Type': 'application/json', ...options.headers },
+    ...options,
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.error || `Request failed (${response.status})`);
+  }
+  return response.status === 204 ? null : response.json();
+}
+
+function showToast(message) {
+  elements.toast.textContent = message;
+  elements.toast.classList.add('show');
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => elements.toast.classList.remove('show'), 2200);
+}
+
+function escapeHtml(value = '') {
+  const span = document.createElement('span');
+  span.textContent = value;
+  return span.innerHTML;
+}
+
+function renderMarkdown(source) {
+  let text = escapeHtml(source);
+  const codeBlocks = [];
+  text = text.replace(/```([\s\S]*?)```/g, (_, code) => {
+    codeBlocks.push(`<pre><code>${code.trim()}</code></pre>`);
+    return `\u0000CODE${codeBlocks.length - 1}\u0000`;
+  });
+  text = text
+    .replace(/^### (.*)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.*)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.*)$/gm, '<h1>$1</h1>')
+    .replace(/^&gt; (.*)$/gm, '<blockquote>$1</blockquote>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code>$1</code>')
+    .replace(/^[-*] (.*)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
+    .replace(/\n{2,}/g, '</p><p>')
+    .replace(/\n/g, '<br>');
+  text = text.replace(/\u0000CODE(\d+)\u0000/g, (_, index) => codeBlocks[Number(index)]);
+  return `<p>${text}</p>`;
+}
+
+function relativeTime(isoDate) {
+  const seconds = Math.max(0, Math.floor((Date.now() - new Date(isoDate).getTime()) / 1000));
+  if (seconds < 60) return 'just now';
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+  return new Date(isoDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function noteById(id = state.selectedId) {
+  return state.notes.find((note) => note.id === id);
+}
+
+function renderNotes() {
+  elements.noteTotal.textContent = `${state.notes.length} ${state.notes.length === 1 ? 'note' : 'notes'}`;
+  if (!state.notes.length) {
+    elements.noteList.innerHTML = `<div class="list-empty">${state.search ? 'No notes match your search.' : 'No notes here yet.'}</div>`;
+    return;
+  }
+  elements.noteList.innerHTML = state.notes.map((note) => {
+    const snippet = note.content.replace(/[#*_>`-]/g, '').trim() || 'No additional text';
+    const tags = note.tags.slice(0, 2).map((tag) => `<span class="tag-pill">${escapeHtml(tag)}</span>`).join('');
+    return `
+      <button class="note-card ${note.id === state.selectedId ? 'active' : ''}" data-note-id="${note.id}">
+        <div class="note-card-top">
+          <h3>${escapeHtml(note.title)}</h3>
+          ${note.pinned ? '<span class="pin-indicator" title="Pinned">◆</span>' : ''}
+        </div>
+        <p class="note-snippet">${escapeHtml(snippet)}</p>
+        <div class="note-card-footer">
+          <span>${relativeTime(note.updated_at)}</span>${tags}
+        </div>
+      </button>`;
+  }).join('');
+}
+
+function renderFolders(allNotes) {
+  const counts = new Map();
+  allNotes.forEach((note) => {
+    if (note.folder) counts.set(note.folder, (counts.get(note.folder) || 0) + 1);
+  });
+  elements.allCount.textContent = allNotes.length;
+  elements.folderList.innerHTML = [...counts.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([folder, count]) => `
+    <button class="folder-link ${state.folder === folder ? 'active' : ''}" data-folder="${escapeHtml(folder)}">
+      <span><span class="folder-icon">◇</span>${escapeHtml(folder)}</span><span class="count">${count}</span>
+    </button>`).join('');
+  elements.folderOptions.innerHTML = [...counts.keys()].map((folder) => `<option value="${escapeHtml(folder)}"></option>`).join('');
+  document.querySelector('[data-folder=""]').classList.toggle('active', !state.folder);
+}
+
+function fillEditor(note) {
+  if (!note) {
+    elements.editor.classList.add('hidden');
+    elements.emptyState.classList.remove('hidden');
+    return;
+  }
+  elements.emptyState.classList.add('hidden');
+  elements.editor.classList.remove('hidden');
+  elements.title.value = note.title;
+  elements.content.value = note.content;
+  elements.folder.value = note.folder;
+  elements.tags.value = note.tags.join(', ');
+  elements.pin.textContent = note.pinned ? '◆' : '♧';
+  elements.pin.title = note.pinned ? 'Unpin note' : 'Pin note';
+  elements.updatedTime.textContent = `Updated ${relativeTime(note.updated_at)}`;
+  updateWordCount();
+  if (state.preview) elements.preview.innerHTML = renderMarkdown(note.content);
+}
+
+async function loadNotes({ preserveSelection = true } = {}) {
+  const params = new URLSearchParams();
+  if (state.search) params.set('q', state.search);
+  if (state.folder) params.set('folder', state.folder);
+  const [notes, allNotes] = await Promise.all([
+    api(`/api/notes?${params}`),
+    state.search || state.folder ? api('/api/notes') : Promise.resolve(null),
+  ]);
+  state.notes = notes;
+  renderFolders(allNotes || notes);
+  if (preserveSelection && state.selectedId && !noteById()) state.selectedId = null;
+  renderNotes();
+  fillEditor(noteById());
+}
+
+async function createNote() {
+  try {
+    const note = await api('/api/notes', {
+      method: 'POST',
+      body: JSON.stringify({ folder: state.folder }),
+    });
+    state.search = '';
+    elements.search.value = '';
+    state.selectedId = note.id;
+    await loadNotes();
+    elements.editorColumn.classList.add('open');
+    elements.title.focus();
+    elements.title.select();
+  } catch (error) { showToast(error.message); }
+}
+
+function updateWordCount() {
+  const words = elements.content.value.trim().match(/\S+/g)?.length || 0;
+  elements.wordCount.textContent = `${words} ${words === 1 ? 'word' : 'words'}`;
+}
+
+function scheduleSave() {
+  const id = state.selectedId;
+  if (!id) return;
+  elements.saveState.classList.add('saving');
+  elements.saveState.lastChild.textContent = ' Saving…';
+  clearTimeout(state.saveTimers.get(id));
+  const requestVersion = (state.requestVersions.get(id) || 0) + 1;
+  state.requestVersions.set(id, requestVersion);
+  const payload = {
+    title: elements.title.value,
+    content: elements.content.value,
+    folder: elements.folder.value,
+    tags: elements.tags.value,
+  };
+  state.saveTimers.set(id, setTimeout(() => {
+    state.saveTimers.delete(id);
+    saveNote(id, payload, requestVersion);
+  }, 550));
+}
+
+async function saveNote(id, payload, requestVersion) {
+  try {
+    const saved = await api(`/api/notes/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+    if (requestVersion !== state.requestVersions.get(id)) return;
+    const index = state.notes.findIndex((note) => note.id === id);
+    if (index >= 0) state.notes[index] = saved;
+    if (id === state.selectedId) {
+      elements.saveState.classList.remove('saving');
+      elements.saveState.lastChild.textContent = ' Saved';
+      elements.updatedTime.textContent = 'Updated just now';
+    }
+    renderNotes();
+    const allNotes = await api('/api/notes');
+    renderFolders(allNotes);
+  } catch (error) {
+    if (id === state.selectedId) elements.saveState.lastChild.textContent = ' Save failed';
+    showToast(error.message);
+  }
+}
+
+async function deleteCurrentNote() {
+  const note = noteById();
+  if (!note || !confirm(`Delete “${note.title}”? This cannot be undone.`)) return;
+  try {
+    clearTimeout(state.saveTimers.get(note.id));
+    state.saveTimers.delete(note.id);
+    await api(`/api/notes/${note.id}`, { method: 'DELETE' });
+    state.selectedId = null;
+    await loadNotes();
+    elements.editorColumn.classList.remove('open');
+    showToast('Note deleted');
+  } catch (error) { showToast(error.message); }
+}
+
+async function togglePin() {
+  const note = noteById();
+  if (!note) return;
+  try {
+    await api(`/api/notes/${note.id}`, {
+      method: 'PATCH', body: JSON.stringify({ pinned: !note.pinned }),
+    });
+    await loadNotes();
+  } catch (error) { showToast(error.message); }
+}
+
+function togglePreview() {
+  state.preview = !state.preview;
+  elements.previewToggle.textContent = state.preview ? 'Write' : 'Preview';
+  elements.content.classList.toggle('hidden', state.preview);
+  elements.preview.classList.toggle('hidden', !state.preview);
+  if (state.preview) elements.preview.innerHTML = renderMarkdown(elements.content.value);
+}
+
+elements.noteList.addEventListener('click', (event) => {
+  const card = event.target.closest('[data-note-id]');
+  if (!card) return;
+  state.selectedId = Number(card.dataset.noteId);
+  renderNotes();
+  fillEditor(noteById());
+  elements.editorColumn.classList.add('open');
+});
+
+document.addEventListener('click', (event) => {
+  const folderLink = event.target.closest('[data-folder]');
+  if (!folderLink) return;
+  state.folder = folderLink.dataset.folder;
+  state.selectedId = null;
+  elements.listTitle.textContent = state.folder || 'All notes';
+  elements.sidebar.classList.remove('open');
+  loadNotes();
+});
+
+['#new-note', '#empty-new-note'].forEach((selector) => $(selector).addEventListener('click', createNote));
+['input', 'change'].forEach((eventName) => {
+  [elements.title, elements.content, elements.folder, elements.tags].forEach((input) => input.addEventListener(eventName, () => {
+    if (input === elements.content) updateWordCount();
+    scheduleSave();
+  }));
+});
+
+let searchTimer;
+elements.search.addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    state.search = elements.search.value.trim();
+    state.selectedId = null;
+    loadNotes();
+  }, 220);
+});
+
+$('#delete-note').addEventListener('click', deleteCurrentNote);
+elements.pin.addEventListener('click', togglePin);
+elements.previewToggle.addEventListener('click', togglePreview);
+$('#export-note').addEventListener('click', () => {
+  if (state.selectedId) window.location.assign(`/api/notes/${state.selectedId}/export`);
+});
+$('#theme-toggle').addEventListener('click', () => {
+  const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = theme;
+  localStorage.setItem('oud-theme', theme);
+});
+$('#open-sidebar').addEventListener('click', () => elements.sidebar.classList.add('open'));
+$('#close-sidebar').addEventListener('click', () => elements.sidebar.classList.remove('open'));
+$('#back-to-list').addEventListener('click', () => elements.editorColumn.classList.remove('open'));
+
+document.addEventListener('keydown', (event) => {
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'n') {
+    event.preventDefault(); createNote();
+  }
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault(); elements.search.focus();
+  }
+});
+
+loadNotes().catch((error) => showToast(error.message));
