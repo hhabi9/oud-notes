@@ -44,13 +44,24 @@ The app bundle and installer are written to `dist/Oud Notes.app` and
 - Automatic saving
 - Search, folders, and tags
 - Pinning and Markdown preview
+- Full GFM/CommonMark preview with tables, tasks, footnotes, math, Mermaid diagrams, and syntax highlighting
 - Markdown export
 - Responsive layout and dark mode
 
 The local database is created at `instance/notes.db` and is excluded from Git.
 
+## Markdown preview
+
+The preview supports CommonMark and GitHub Flavored Markdown: headings, emphasis,
+links, images, blockquotes, nested lists, task lists, tables, horizontal rules,
+inline and fenced code, and strikethrough. It also supports footnotes (`[^1]`),
+KaTeX math (`$x$` or `$$x$$`), Mermaid diagrams in fenced `mermaid` blocks, and
+syntax highlighting in fenced code blocks. Raw HTML is sanitized before display.
+
 ## Test it
 
 ```bash
+npm install
+npm test
 python -m unittest discover -s tests
 ```

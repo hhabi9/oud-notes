@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="220" viewBox="0 0 640 220">
+  <rect width="640" height="220" rx="24" fill="#e2ebe6"/>
+  <circle cx="116" cy="110" r="54" fill="#315c4c"/>
+  <path d="M94 133c-16-8-24-23-24-43 0-29 18-49 46-49s46 20 46 49c0 20-8 35-24 43" fill="none" stroke="#fffefa" stroke-width="18" stroke-linecap="round"/>
+  <text x="198" y="124" fill="#315c4c" font-family="Georgia, serif" font-size="42">Markdown image</text>
+</svg>

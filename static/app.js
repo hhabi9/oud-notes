@@ -8,6 +8,20 @@ const state = {
   preview: false,
 };
 
+marked.use({ gfm: true, breaks: false });
+marked.use(markedFootnote());
+marked.use(markedKatex({ throwOnError: false, nonStandard: true }));
+
+function initializeMermaid() {
+  mermaid.initialize({
+    startOnLoad: false,
+    securityLevel: 'strict',
+    theme: document.documentElement.dataset.theme === 'dark' ? 'dark' : 'neutral',
+  });
+}
+
+initializeMermaid();
+
 const $ = (selector) => document.querySelector(selector);
 const elements = {
   noteList: $('#note-list'),
@@ -59,27 +73,37 @@ function escapeHtml(value = '') {
   return span.innerHTML;
 }
 
-function renderMarkdown(source) {
-  let text = escapeHtml(source);
-  const codeBlocks = [];
-  text = text.replace(/```([\s\S]*?)```/g, (_, code) => {
-    codeBlocks.push(`<pre><code>${code.trim()}</code></pre>`);
-    return `\u0000CODE${codeBlocks.length - 1}\u0000`;
-  });
-  text = text
-    .replace(/^### (.*)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.*)$/gm, '<h2>$1</h2>')
-    .replace(/^# (.*)$/gm, '<h1>$1</h1>')
-    .replace(/^&gt; (.*)$/gm, '<blockquote>$1</blockquote>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/`(.+?)`/g, '<code>$1</code>')
-    .replace(/^[-*] (.*)$/gm, '<li>$1</li>')
-    .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
-    .replace(/\n{2,}/g, '</p><p>')
-    .replace(/\n/g, '<br>');
-  text = text.replace(/\u0000CODE(\d+)\u0000/g, (_, index) => codeBlocks[Number(index)]);
-  return `<p>${text}</p>`;
+let previewRenderVersion = 0;
+
+async function renderMarkdown(source) {
+  const renderVersion = ++previewRenderVersion;
+  try {
+    const html = DOMPurify.sanitize(marked.parse(source));
+    if (renderVersion !== previewRenderVersion) return;
+    elements.preview.innerHTML = html;
+
+    elements.preview.querySelectorAll('a').forEach((link) => {
+      if (/^https?:\/\//i.test(link.href)) {
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+      }
+    });
+
+    const diagrams = [];
+    elements.preview.querySelectorAll('pre code.language-mermaid').forEach((code) => {
+      const diagram = document.createElement('div');
+      diagram.className = 'mermaid';
+      diagram.textContent = code.textContent;
+      code.closest('pre').replaceWith(diagram);
+      diagrams.push(diagram);
+    });
+
+    elements.preview.querySelectorAll('pre code').forEach((code) => hljs.highlightElement(code));
+    if (diagrams.length) await mermaid.run({ nodes: diagrams, suppressErrors: true });
+  } catch (error) {
+    if (renderVersion !== previewRenderVersion) return;
+    elements.preview.innerHTML = `<p class="preview-error">Preview error: ${escapeHtml(error.message)}</p>`;
+  }
 }
 
 function relativeTime(isoDate) {
@@ -148,7 +172,7 @@ function fillEditor(note) {
   elements.pin.title = note.pinned ? 'Unpin note' : 'Pin note';
   elements.updatedTime.textContent = `Updated ${relativeTime(note.updated_at)}`;
   updateWordCount();
-  if (state.preview) elements.preview.innerHTML = renderMarkdown(note.content);
+  if (state.preview) renderMarkdown(note.content);
 }
 
 async function loadNotes({ preserveSelection = true } = {}) {
@@ -257,7 +281,7 @@ function togglePreview() {
   elements.previewToggle.textContent = state.preview ? 'Write' : 'Preview';
   elements.content.classList.toggle('hidden', state.preview);
   elements.preview.classList.toggle('hidden', !state.preview);
-  if (state.preview) elements.preview.innerHTML = renderMarkdown(elements.content.value);
+  if (state.preview) renderMarkdown(elements.content.value);
 }
 
 elements.noteList.addEventListener('click', (event) => {
@@ -311,6 +335,8 @@ $('#theme-toggle').addEventListener('click', () => {
   const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
   document.documentElement.dataset.theme = theme;
   localStorage.setItem('oud-theme', theme);
+  initializeMermaid();
+  if (state.preview) renderMarkdown(elements.content.value);
 });
 $('#open-sidebar').addEventListener('click', () => elements.sidebar.classList.add('open'));
 $('#close-sidebar').addEventListener('click', () => elements.sidebar.classList.remove('open'));

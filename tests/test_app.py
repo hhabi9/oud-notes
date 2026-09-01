@@ -64,6 +64,25 @@ class NotesApiTestCase(unittest.TestCase):
                 Path("/Users/tester/Library/Application Support/Oud Notes"),
             )
 
+    def test_offline_markdown_assets_are_bundled(self):
+        page = self.client.get("/")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn(b"vendor/marked.umd.js", page.data)
+        self.assertIn(b"vendor/mermaid.min.js", page.data)
+
+        for asset in (
+            "marked.umd.js",
+            "marked-footnote.umd.js",
+            "marked-katex.umd.js",
+            "purify.min.js",
+            "highlight.min.js",
+            "mermaid.min.js",
+            "katex.min.css",
+        ):
+            response = self.client.get(f"/static/vendor/{asset}")
+            self.assertEqual(response.status_code, 200)
+            response.close()
+
 
 if __name__ == "__main__":
     unittest.main()
