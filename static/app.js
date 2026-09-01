@@ -301,7 +301,11 @@ $('#delete-note').addEventListener('click', deleteCurrentNote);
 elements.pin.addEventListener('click', togglePin);
 elements.previewToggle.addEventListener('click', togglePreview);
 $('#export-note').addEventListener('click', () => {
-  if (state.selectedId) window.location.assign(`/api/notes/${state.selectedId}/export`);
+  if (!state.selectedId) return;
+  const link = document.createElement('a');
+  link.href = `/api/notes/${state.selectedId}/export`;
+  link.download = '';
+  link.click();
 });
 $('#theme-toggle').addEventListener('click', () => {
   const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';

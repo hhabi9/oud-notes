@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import sqlite3
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -13,7 +14,13 @@ def utc_now() -> str:
 
 
 def create_app(test_config: dict | None = None) -> Flask:
-    app = Flask(__name__, instance_relative_config=True)
+    resource_root = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+    app = Flask(
+        __name__,
+        instance_relative_config=True,
+        static_folder=str(resource_root / "static"),
+        template_folder=str(resource_root / "templates"),
+    )
     app.config.from_mapping(DATABASE=str(Path(app.instance_path) / "notes.db"))
 
     if test_config:
@@ -190,9 +197,7 @@ def create_app(test_config: dict | None = None) -> Flask:
     return app
 
 
-app = create_app()
-
-
 if __name__ == "__main__":
     # Port 5000 is commonly reserved by macOS Control Center/AirPlay.
+    app = create_app()
     app.run(debug=True, port=5050)

@@ -1,8 +1,10 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from app import create_app
+from desktop import application_support_dir
 
 
 class NotesApiTestCase(unittest.TestCase):
@@ -54,6 +56,13 @@ class NotesApiTestCase(unittest.TestCase):
     def test_tags_are_trimmed_and_deduplicated(self):
         response = self.client.post("/api/notes", json={"tags": " work,Work, ideas ,"})
         self.assertEqual(response.get_json()["tags"], ["work", "ideas"])
+
+    def test_desktop_data_uses_application_support(self):
+        with patch("desktop.Path.home", return_value=Path("/Users/tester")):
+            self.assertEqual(
+                application_support_dir(),
+                Path("/Users/tester/Library/Application Support/Oud Notes"),
+            )
 
 
 if __name__ == "__main__":
