@@ -36,7 +36,7 @@ function initializeMermaid() {
   mermaid.initialize({
     startOnLoad: false,
     securityLevel: 'strict',
-    theme: document.documentElement.dataset.theme === 'dark' ? 'dark' : 'neutral',
+    theme: ['dark', 'forest', 'midnight'].includes(document.documentElement.dataset.theme) ? 'dark' : 'neutral',
   });
 }
 
@@ -390,7 +390,8 @@ $('#export-note').addEventListener('click', async () => {
   link.click();
 });
 $('#theme-toggle').addEventListener('click', () => {
-  const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  const themes = ['light', 'sepia', 'ocean', 'dark', 'forest', 'midnight'];
+  const theme = themes[(themes.indexOf(document.documentElement.dataset.theme) + 1) % themes.length];
   document.documentElement.dataset.theme = theme;
   localStorage.setItem('oud-theme', theme);
   initializeMermaid();

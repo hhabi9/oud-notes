@@ -38,7 +38,7 @@
       <footer class="sidebar-footer">
         <button class="icon-button" id="preferences-open" aria-label="Preferences" title="Preferences (⌘,)">⚙</button>
         <div><span class="status-dot"></span> Stored on this device</div>
-        <button class="icon-button" id="theme-toggle" aria-label="Toggle dark mode">☾</button>
+        <button class="icon-button" id="theme-toggle" aria-label="Next theme" title="Cycle themes">◐</button>
       </footer>
     </aside>
 
@@ -110,7 +110,7 @@
   <div class="toast" id="toast" role="status"></div>
   <dialog id="preferences" aria-labelledby="preferences-title">
     <form method="dialog"><header class="preferences-header"><h2 id="preferences-title">Preferences</h2><button class="icon-button" aria-label="Close preferences">×</button></header></form>
-    <label class="preference-row">Appearance <select id="pref-theme"><option value="light">Light</option><option value="dark">Dark</option></select></label>
+    <label class="preference-row">Theme <select id="pref-theme"><option value="light">Light</option><option value="sepia">Sepia</option><option value="ocean">Ocean</option><option value="dark">Dark</option><option value="forest">Forest</option><option value="midnight">Midnight</option></select></label>
     <label class="preference-row">Writing font <select id="pref-font"><option value="serif">Serif</option><option value="sans">Sans serif</option><option value="mono">Monospace</option></select></label>
     <div class="preference-row"><span>Note view zoom</span><div class="zoom-controls"><button id="zoom-out" class="icon-button" aria-label="Zoom out">−</button><button id="zoom-reset" class="text-button" title="Reset zoom">100%</button><button id="zoom-in" class="icon-button" aria-label="Zoom in">+</button></div></div>
     <p class="preference-help">Zoom: ⌘ + / − · Reset: ⌘ 0</p>

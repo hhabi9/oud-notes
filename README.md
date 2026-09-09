@@ -49,6 +49,7 @@ The app bundle and installer are written to `dist/Oud Notes.app` and
 - Markdown export
 - Responsive layout and dark mode
 - Preferences (gear button or ⌘,): theme, writing font, and note-view zoom
+- Six themes: Light, Sepia, Ocean, Dark, Forest, and Midnight; cycle with the sidebar theme button
 - Import Markdown/text files or JSON backups; export the full library with metadata
 
 Use ⌘+ / ⌘− to zoom the note view, and ⌘0 to reset it. Preferences are remembered
