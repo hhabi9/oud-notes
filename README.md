@@ -4,18 +4,14 @@ A calm, local-first note-taking app. Notes are stored in a SQLite database on yo
 
 ## Install on macOS
 
-### Homebrew (private repository)
+### Homebrew
 
 ```bash
-brew install gh
-gh auth login
-gh auth setup-git
 brew tap hhabi9/oud-notes https://github.com/hhabi9/oud-notes.git
 brew install --cask hhabi9/oud-notes/oud-notes
 ```
 
-Your GitHub account must have access to this private repository. The cask uses
-GitHub CLI authentication to download the DMG without storing tokens in its source.
+The cask downloads the public release directly; no GitHub account or GitHub CLI is required.
 For subsequent versions, use `brew update` then
 `brew upgrade --cask hhabi9/oud-notes/oud-notes`.
 If you already installed manually, quit Oud Notes and move the existing app to
