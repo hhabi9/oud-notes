@@ -71,6 +71,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .app-shell {
   display: grid;
   grid-template-columns: 230px minmax(280px, 350px) 1fr;
+  grid-template-rows: minmax(0, 1fr);
   height: 100vh;
   max-width: 1800px;
   margin: auto;
@@ -78,6 +79,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   box-shadow: var(--shadow);
 }
 
+.sidebar, .notes-column, .editor-column { min-height: 0; overflow: hidden; }
 .sidebar, .notes-column { border-right: 1px solid var(--line); }
 .sidebar { display: flex; flex-direction: column; padding: 26px 18px 18px; background: var(--panel); }
 .brand-row, .sidebar-footer, .editor-toolbar, .editor-footer, .list-header,
@@ -112,7 +114,8 @@ kbd { padding: 2px 5px; border: 1px solid var(--line); border-radius: 4px; color
 .icon-button:hover, .text-button:hover { background: var(--accent-soft); color: var(--accent); }
 .icon-button.danger:hover { color: #b45151; background: #f7e4e1; }
 
-.notes-column { min-width: 0; background: var(--panel); overflow: hidden; }
+.notes-column { display: flex; flex-direction: column; min-width: 0; background: var(--panel); overflow: hidden; }
+.list-header, .list-title-row { flex-shrink: 0; }
 .list-header { height: 74px; padding: 0 22px; border-bottom: 1px solid var(--line); }
 .search-wrap { display: flex; align-items: center; width: 100%; gap: 8px; color: var(--faint); }
 .search-wrap input { min-width: 0; width: 100%; border: 0; outline: 0; background: transparent; color: var(--ink); }
@@ -121,7 +124,7 @@ kbd { padding: 2px 5px; border: 1px solid var(--line); border-radius: 4px; color
 .eyebrow { margin: 0 0 4px; }
 h1 { margin: 0; font-family: Georgia, serif; font-size: 25px; }
 .note-total { color: var(--faint); font-size: 12px; }
-.note-list { height: calc(100vh - 147px); padding: 5px 12px 30px; overflow-y: auto; }
+.note-list { flex: 1; min-height: 0; padding: 5px 12px 30px; overflow-y: auto; overscroll-behavior-y: contain; }
 .note-card { width: 100%; margin: 5px 0; padding: 15px 14px; border: 1px solid transparent; border-radius: 11px; background: transparent; cursor: pointer; color: inherit; text-align: left; transition: .15s ease; }
 .note-card:hover { background: var(--paper); }
 .note-card.active { border-color: var(--line); background: var(--paper); box-shadow: 0 5px 18px rgba(50, 50, 45, .05); }
@@ -138,7 +141,7 @@ h1 { margin: 0; font-family: Georgia, serif; font-size: 25px; }
 .empty-state h2 { margin: 0; font-family: Georgia, serif; font-size: clamp(24px, 4vw, 38px); font-weight: 500; }
 .empty-state p { margin: 11px 0 24px; color: var(--muted); }
 .secondary-button { padding: 11px 17px; }
-.editor { display: flex; flex-direction: column; height: 100%; }
+.editor { display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden; }
 .hidden { display: none !important; }
 .editor-toolbar { flex: 0 0 74px; padding: 0 28px; border-bottom: 1px solid var(--line); }
 .save-state { display: flex; align-items: center; gap: 7px; color: var(--faint); font-size: 11px; }
@@ -146,7 +149,7 @@ h1 { margin: 0; font-family: Georgia, serif; font-size: 25px; }
 .save-state.saving span { background: var(--warm); animation: pulse 1s infinite; }
 .toolbar-actions { gap: 2px; }
 .text-button { padding: 8px 10px; border-radius: 8px; color: var(--muted); font-size: 12px; }
-.editor-scroll { flex: 1; width: min(820px, 100%); margin: auto; padding: 56px clamp(28px, 7vw, 75px) 20px; overflow-y: auto; }
+.editor-scroll { flex: 1; min-height: 0; width: 100%; margin: 0 auto; padding: 56px max(28px, calc((100% - 670px) / 2)) 20px; overflow-y: auto; overscroll-behavior-y: contain; }
 .title-input { width: 100%; padding: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font: 500 clamp(30px, 4vw, 48px)/1.12 Georgia, serif; }
 .note-meta { display: grid; grid-template-columns: 1fr 1.5fr; gap: 22px; margin: 28px 0 26px; padding: 13px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .note-meta label { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 10px; min-width: 0; color: var(--faint); font-size: 11px; }
@@ -215,7 +218,7 @@ button:disabled { opacity: .5; cursor: default; }
   .app-shell { display: block; }
   .sidebar { position: fixed; inset: 0 auto 0 0; z-index: 5; width: min(280px, 86vw); transform: translateX(-102%); box-shadow: var(--shadow); transition: transform .2s; }
   .sidebar.open { transform: translateX(0); }
-  .notes-column { display: block; width: 100%; height: 100%; border: 0; }
+  .notes-column { display: flex; width: 100%; height: 100%; border: 0; }
   .editor-column { position: fixed; inset: 0; z-index: 3; transform: translateX(100%); transition: transform .22s ease; }
   .editor-column.open { transform: translateX(0); }
   .list-header { gap: 8px; }
