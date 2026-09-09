@@ -70,7 +70,7 @@ $('#import-files').addEventListener('change', async (event) => {
     }
     await flushSaves();
     const result = await api('/api/import', { method: 'POST', body: JSON.stringify({ format: 'oud-notes', version: 1, notes }) });
-    state.search = ''; state.folder = ''; elements.search.value = ''; elements.listTitle.textContent = 'All notes';
+    state.search = ''; state.folder = ''; state.archived = false; $('#archive-view').classList.remove('active'); elements.search.value = ''; elements.listTitle.textContent = 'All notes';
     await loadNotes();
     $('#transfer-status').textContent = `Imported ${result.imported} notes.`;
   } catch (error) { $('#transfer-status').textContent = error.message; }

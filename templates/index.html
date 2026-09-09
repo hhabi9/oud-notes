@@ -32,6 +32,7 @@
           <span class="count" id="all-count">0</span>
         </button>
         <p class="nav-label">Folders</p>
+        <button class="folder-link" id="archive-view"><span>▣ Archive</span></button>
         <div id="folder-list"></div>
       </nav>
 
@@ -108,6 +109,10 @@
   </main>
 
   <div class="toast" id="toast" role="status"></div>
+  <div id="note-context-menu" class="note-context-menu hidden" role="menu" aria-label="Note actions">
+    <button id="context-archive" role="menuitem">Archive</button>
+    <button id="context-delete" role="menuitem">Delete…</button>
+  </div>
   <dialog id="preferences" aria-labelledby="preferences-title">
     <form method="dialog"><header class="preferences-header"><h2 id="preferences-title">Preferences</h2><button class="icon-button" aria-label="Close preferences">×</button></header></form>
     <label class="preference-row">Theme <select id="pref-theme"><option value="light">Light</option><option value="sepia">Sepia</option><option value="ocean">Ocean</option><option value="dark">Dark</option><option value="forest">Forest</option><option value="midnight">Midnight</option></select></label>
@@ -130,5 +135,6 @@
   <script src="{{ url_for('static', filename='vendor/mermaid.min.js') }}" defer></script>
   <script src="{{ url_for('static', filename='app.js') }}" defer></script>
   <script src="{{ url_for('static', filename='preferences.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='note-menu.js') }}" defer></script>
 </body>
 </html>

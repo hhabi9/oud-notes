@@ -61,9 +61,15 @@ def create_app(test_config: dict | None = None) -> Flask:
         )
         db.commit()
 
+        columns = {row['name'] for row in db.execute('PRAGMA table_info(notes)')}
+        if 'archived' not in columns:
+            db.execute('ALTER TABLE notes ADD COLUMN archived INTEGER NOT NULL DEFAULT 0')
+            db.commit()
+
     def serialize_note(row: sqlite3.Row) -> dict:
         note = dict(row)
         note["pinned"] = bool(note["pinned"])
+        note["archived"] = bool(note["archived"])
         note["tags"] = [tag for tag in note["tags"].split(",") if tag]
         return note
 
@@ -100,6 +106,9 @@ def create_app(test_config: dict | None = None) -> Flask:
         folder = request.args.get("folder", "").strip()
         clauses: list[str] = []
         values: list[str] = []
+        if request.args.get('archived') != 'all':
+            clauses.append('archived = ?')
+            values.append('1' if request.args.get('archived') == 'true' else '0')
 
         if search:
             clauses.append("(LOWER(title) LIKE ? OR LOWER(content) LIKE ? OR LOWER(tags) LIKE ?)")
@@ -156,7 +165,8 @@ def create_app(test_config: dict | None = None) -> Flask:
                 any(not isinstance(note.get(key, ''), str) for key in ('title', 'content', 'folder')) or
                 not isinstance(note.get('tags', []), list) or
                 any(not isinstance(tag, str) for tag in note.get('tags', [])) or
-                not isinstance(note.get('pinned', False), bool)):
+                not isinstance(note.get('pinned', False), bool) or
+                not isinstance(note.get('archived', False), bool)):
                 return jsonify(error='Invalid note in import; no notes were imported'), 400
             dates = []
             for key in ('created_at', 'updated_at'):
@@ -168,9 +178,9 @@ def create_app(test_config: dict | None = None) -> Flask:
                 dates.append(value)
             rows.append((note.get('title', '').strip()[:200] or 'Untitled note', note.get('content', ''),
                          normalize_tags(note.get('tags', [])), note.get('folder', '').strip()[:80],
-                         int(note.get('pinned', False)), *dates))
+                         int(note.get('pinned', False)), *dates, int(note.get('archived', False))))
         with get_db() as db:
-            db.executemany('INSERT INTO notes (title, content, tags, folder, pinned, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)', rows)
+            db.executemany('INSERT INTO notes (title, content, tags, folder, pinned, created_at, updated_at, archived) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', rows)
         return jsonify(imported=len(rows)), 201
 
     @app.get("/api/notes/<int:note_id>")
@@ -195,6 +205,10 @@ def create_app(test_config: dict | None = None) -> Flask:
             updates["tags"] = normalize_tags(payload["tags"])
         if "pinned" in payload:
             updates["pinned"] = int(bool(payload["pinned"]))
+        if 'archived' in payload:
+            if not isinstance(payload['archived'], bool):
+                return jsonify(error='Archived must be true or false'), 400
+            updates['archived'] = int(payload['archived'])
 
         if updates:
             updates["updated_at"] = utc_now()

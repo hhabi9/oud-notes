@@ -53,6 +53,21 @@ class NotesApiTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.get_json(), {"error": "Note not found"})
 
+    def test_archive_restore_and_backup(self):
+        note = self.client.post('/api/notes', json={'title': 'Keep me', 'content': 'important'}).get_json()
+        path = f"/api/notes/{note['id']}"
+        self.assertFalse(note['archived'])
+        self.assertEqual(self.client.patch(path, json={'archived': True}).status_code, 200)
+        self.assertEqual(self.client.get('/api/notes').get_json(), [])
+        self.assertEqual(len(self.client.get('/api/notes?archived=true').get_json()), 1)
+        backup = self.client.get('/api/backup').get_json()
+        self.assertTrue(backup['notes'][0]['archived'])
+        self.assertEqual(self.client.post('/api/import', json=backup).status_code, 201)
+        self.assertEqual(len(self.client.get('/api/notes?archived=true').get_json()), 2)
+        self.client.patch(path, json={'archived': False})
+        self.assertEqual(self.client.get('/api/notes').get_json()[0]['content'], 'important')
+        self.assertEqual(self.client.patch(path, json={'archived': 'false'}).status_code, 400)
+
     def test_backup_import_roundtrip_preserves_notes(self):
         original = self.client.post('/api/notes', json={'title': 'Study', 'content': '# Hello\n你好', 'folder': 'School', 'tags': ['exam'], 'pinned': True}).get_json()
         backup = self.client.get('/api/backup')

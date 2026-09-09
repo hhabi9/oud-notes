@@ -50,8 +50,8 @@ app = BUNDLE(
     info_plist={
         "CFBundleDisplayName": "Oud Notes",
         "CFBundleName": "Oud Notes",
-        "CFBundleShortVersionString": "1.3.0",
-        "CFBundleVersion": "5",
+        "CFBundleShortVersionString": "1.4.0",
+        "CFBundleVersion": "6",
         "LSMinimumSystemVersion": "12.0",
         "NSHighResolutionCapable": True,
     },

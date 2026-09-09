@@ -42,6 +42,7 @@ The app bundle and installer are written to `dist/Oud Notes.app` and
 ## Features
 
 - Automatic saving
+- Right-click a note to Archive or Delete; restore notes from the Archive view
 - Recovery of pending edits after reopening; export waits for saving
 - Search, folders, and tags
 - Pinning and Markdown preview

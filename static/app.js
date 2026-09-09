@@ -2,6 +2,7 @@ const state = {
   notes: [],
   selectedId: null,
   folder: '',
+  archived: false,
   search: '',
   saveTimers: new Map(),
   requestVersions: new Map(),
@@ -173,7 +174,7 @@ function renderFolders(allNotes) {
       <span><span class="folder-icon">◇</span>${escapeHtml(folder)}</span><span class="count">${count}</span>
     </button>`).join('');
   elements.folderOptions.innerHTML = [...counts.keys()].map((folder) => `<option value="${escapeHtml(folder)}"></option>`).join('');
-  document.querySelector('[data-folder=""]').classList.toggle('active', !state.folder);
+  document.querySelector('[data-folder=""]').classList.toggle('active', !state.folder && !state.archived);
 }
 
 function fillEditor(note) {
@@ -198,11 +199,12 @@ function fillEditor(note) {
 
 async function loadNotes({ preserveSelection = true } = {}) {
   const params = new URLSearchParams();
+  if (state.archived) params.set('archived', 'true');
   if (state.search) params.set('q', state.search);
   if (state.folder) params.set('folder', state.folder);
   const [notes, allNotes] = await Promise.all([
     api(`/api/notes?${params}`),
-    state.search || state.folder ? api('/api/notes') : Promise.resolve(null),
+    state.search || state.folder || state.archived ? api('/api/notes') : Promise.resolve(null),
   ]);
   state.notes = notes.map(withDraft);
   renderFolders(allNotes || notes);
@@ -213,6 +215,9 @@ async function loadNotes({ preserveSelection = true } = {}) {
 
 async function createNote() {
   try {
+    state.archived = false;
+    $('#archive-view').classList.remove('active');
+    elements.listTitle.textContent = state.folder || 'All notes';
     const note = await api('/api/notes', {
       method: 'POST',
       body: JSON.stringify({ folder: state.folder }),
@@ -300,16 +305,17 @@ async function saveNote(id, payload, requestVersion) {
   }
 }
 
-async function deleteCurrentNote() {
-  const note = noteById();
+async function deleteCurrentNote(id = state.selectedId) {
+  const note = noteById(id);
   if (!note || !confirm(`Delete “${note.title}”? This cannot be undone.`)) return;
   try {
     clearTimeout(state.saveTimers.get(note.id));
     state.saveTimers.delete(note.id);
+    await (state.saveQueues.get(note.id) || Promise.resolve()).catch(() => {});
     await api(`/api/notes/${note.id}`, { method: 'DELETE' });
     delete drafts[note.id];
     persistDrafts();
-    state.selectedId = null;
+    if (state.selectedId === note.id) state.selectedId = null;
     await loadNotes();
     elements.editorColumn.classList.remove('open');
     showToast('Note deleted');
@@ -348,6 +354,8 @@ document.addEventListener('click', (event) => {
   const folderLink = event.target.closest('[data-folder]');
   if (!folderLink) return;
   state.folder = folderLink.dataset.folder;
+  state.archived = false;
+  $('#archive-view').classList.remove('active');
   state.selectedId = null;
   elements.listTitle.textContent = state.folder || 'All notes';
   elements.sidebar.classList.remove('open');
@@ -372,7 +380,7 @@ elements.search.addEventListener('input', () => {
   }, 220);
 });
 
-$('#delete-note').addEventListener('click', deleteCurrentNote);
+$('#delete-note').addEventListener('click', () => deleteCurrentNote());
 elements.pin.addEventListener('click', togglePin);
 elements.previewToggle.addEventListener('click', togglePreview);
 $('#export-note').addEventListener('click', async () => {
@@ -411,7 +419,7 @@ document.addEventListener('keydown', (event) => {
 });
 
 async function startApp() {
-  const notes = await api('/api/notes');
+  const notes = await api('/api/notes?archived=all');
   const existingIds = new Set(notes.map((note) => String(note.id)));
   for (const id of Object.keys(drafts)) {
     if (!existingIds.has(id)) delete drafts[id];
