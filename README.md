@@ -42,6 +42,7 @@ The app bundle and installer are written to `dist/Oud Notes.app` and
 ## Features
 
 - Automatic saving
+- Recovery of pending edits after reopening; export waits for saving
 - Search, folders, and tags
 - Pinning and Markdown preview
 - Full GFM/CommonMark preview with tables, tasks, footnotes, math, Mermaid diagrams, and syntax highlighting

@@ -116,7 +116,9 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     @app.post("/api/notes")
     def create_note() -> tuple[Response, int]:
-        payload = request.get_json(silent=True) or {}
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            return jsonify({"error": "Expected a JSON object"}), 400
         now = utc_now()
         title = str(payload.get("title", "Untitled note")).strip()[:200] or "Untitled note"
         content = str(payload.get("content", ""))

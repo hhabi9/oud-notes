@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from app import create_app
-from desktop import application_support_dir
+from desktop import application_support_dir, main
 
 
 class NotesApiTestCase(unittest.TestCase):
@@ -53,6 +53,14 @@ class NotesApiTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.get_json(), {"error": "Note not found"})
 
+    def test_create_rejects_non_object_json(self):
+        for payload in (["unexpected"], [], "text", 3, False):
+            with self.subTest(payload=payload):
+                response = self.client.post('/api/notes', json=payload)
+                self.assertEqual(response.status_code, 400)
+                self.assertEqual(response.get_json(), {"error": "Expected a JSON object"})
+        self.assertEqual(self.client.get('/api/notes').get_json(), [])
+
     def test_tags_are_trimmed_and_deduplicated(self):
         response = self.client.post("/api/notes", json={"tags": " work,Work, ideas ,"})
         self.assertEqual(response.get_json()["tags"], ["work", "ideas"])
@@ -63,6 +71,13 @@ class NotesApiTestCase(unittest.TestCase):
                 application_support_dir(),
                 Path("/Users/tester/Library/Application Support/Oud Notes"),
             )
+
+    def test_desktop_preserves_recovery_storage_between_launches(self):
+        with patch('desktop.create_desktop_app'), patch('desktop.webview.create_window') as window, patch('desktop.webview.start') as start:
+            main()
+        self.assertEqual(window.call_args.kwargs['http_port'], 5051)
+        self.assertFalse(start.call_args.kwargs['private_mode'])
+        self.assertEqual(start.call_args.kwargs['storage_path'], str(application_support_dir() / 'webview'))
 
     def test_offline_markdown_assets_are_bundled(self):
         page = self.client.get("/")

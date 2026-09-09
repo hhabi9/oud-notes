@@ -2,7 +2,7 @@
   "name": "oud-notes-assets",
   "private": true,
   "scripts": {
-    "test": "node --test tests/markdown-rendering.test.mjs",
+    "test": "node --test tests/*.test.mjs",
     "vendor": "node scripts/vendor_markdown.mjs"
   },
   "devDependencies": {

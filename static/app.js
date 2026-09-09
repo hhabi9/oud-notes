@@ -6,7 +6,27 @@ const state = {
   saveTimers: new Map(),
   requestVersions: new Map(),
   preview: false,
+  saveQueues: new Map(),
 };
+
+const draftKey = 'oud-pending-edits';
+let drafts = {};
+try {
+  const stored = JSON.parse(localStorage.getItem(draftKey) || '{}');
+  if (stored && typeof stored === 'object' && !Array.isArray(stored)) drafts = stored;
+} catch (error) {
+  // A damaged recovery record must not prevent the editor from opening.
+}
+
+function persistDrafts() {
+  localStorage.setItem(draftKey, JSON.stringify(drafts));
+}
+
+function withDraft(note) {
+  const merged = { ...note, ...drafts[note.id] };
+  if (typeof merged.tags === 'string') merged.tags = merged.tags.split(',').map((tag) => tag.trim()).filter(Boolean);
+  return merged;
+}
 
 marked.use({ gfm: true, breaks: false });
 marked.use(markedFootnote());
@@ -70,7 +90,7 @@ function showToast(message) {
 function escapeHtml(value = '') {
   const span = document.createElement('span');
   span.textContent = value;
-  return span.innerHTML;
+  return span.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 let previewRenderVersion = 0;
@@ -162,6 +182,7 @@ function fillEditor(note) {
     elements.emptyState.classList.remove('hidden');
     return;
   }
+  note = withDraft(note);
   elements.emptyState.classList.add('hidden');
   elements.editor.classList.remove('hidden');
   elements.title.value = note.title;
@@ -183,7 +204,7 @@ async function loadNotes({ preserveSelection = true } = {}) {
     api(`/api/notes?${params}`),
     state.search || state.folder ? api('/api/notes') : Promise.resolve(null),
   ]);
-  state.notes = notes;
+  state.notes = notes.map(withDraft);
   renderFolders(allNotes || notes);
   if (preserveSelection && state.selectedId && !noteById()) state.selectedId = null;
   renderNotes();
@@ -225,16 +246,43 @@ function scheduleSave() {
     folder: elements.folder.value,
     tags: elements.tags.value,
   };
+  drafts[id] = payload;
+  try {
+    persistDrafts();
+  } catch (error) {
+    showToast('Local recovery unavailable; keep the app open until Saved.');
+  }
   state.saveTimers.set(id, setTimeout(() => {
     state.saveTimers.delete(id);
-    saveNote(id, payload, requestVersion);
+    queueSave(id, payload, requestVersion).catch(() => {});
   }, 550));
+}
+
+function queueSave(id, payload, requestVersion) {
+  const previous = state.saveQueues.get(id) || Promise.resolve();
+  const pending = previous.catch(() => {}).then(() => saveNote(id, payload, requestVersion)).finally(() => {
+    if (state.saveQueues.get(id) === pending) state.saveQueues.delete(id);
+  });
+  state.saveQueues.set(id, pending);
+  return pending;
+}
+
+async function flushSaves() {
+  for (const [id, payload] of Object.entries(drafts)) {
+    const noteId = Number(id);
+    clearTimeout(state.saveTimers.get(noteId));
+    state.saveTimers.delete(noteId);
+    queueSave(noteId, payload, state.requestVersions.get(noteId)).catch(() => {});
+  }
+  await Promise.all(state.saveQueues.values());
 }
 
 async function saveNote(id, payload, requestVersion) {
   try {
     const saved = await api(`/api/notes/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
     if (requestVersion !== state.requestVersions.get(id)) return;
+    delete drafts[id];
+    persistDrafts();
     const index = state.notes.findIndex((note) => note.id === id);
     if (index >= 0) state.notes[index] = saved;
     if (id === state.selectedId) {
@@ -248,6 +296,7 @@ async function saveNote(id, payload, requestVersion) {
   } catch (error) {
     if (id === state.selectedId) elements.saveState.lastChild.textContent = ' Save failed';
     showToast(error.message);
+    throw error;
   }
 }
 
@@ -258,6 +307,8 @@ async function deleteCurrentNote() {
     clearTimeout(state.saveTimers.get(note.id));
     state.saveTimers.delete(note.id);
     await api(`/api/notes/${note.id}`, { method: 'DELETE' });
+    delete drafts[note.id];
+    persistDrafts();
     state.selectedId = null;
     await loadNotes();
     elements.editorColumn.classList.remove('open');
@@ -324,10 +375,17 @@ elements.search.addEventListener('input', () => {
 $('#delete-note').addEventListener('click', deleteCurrentNote);
 elements.pin.addEventListener('click', togglePin);
 elements.previewToggle.addEventListener('click', togglePreview);
-$('#export-note').addEventListener('click', () => {
+$('#export-note').addEventListener('click', async () => {
   if (!state.selectedId) return;
+  const id = state.selectedId;
+  try {
+    await flushSaves();
+  } catch (error) {
+    showToast('Could not save the latest edits. Export cancelled.');
+    return;
+  }
   const link = document.createElement('a');
-  link.href = `/api/notes/${state.selectedId}/export`;
+  link.href = `/api/notes/${id}/export`;
   link.download = '';
   link.click();
 });
@@ -351,4 +409,18 @@ document.addEventListener('keydown', (event) => {
   }
 });
 
-loadNotes().catch((error) => showToast(error.message));
+async function startApp() {
+  const notes = await api('/api/notes');
+  const existingIds = new Set(notes.map((note) => String(note.id)));
+  for (const id of Object.keys(drafts)) {
+    if (!existingIds.has(id)) delete drafts[id];
+  }
+  persistDrafts();
+  await flushSaves();
+  await loadNotes();
+}
+
+startApp().catch((error) => {
+  showToast(error.message);
+  loadNotes().catch((loadError) => showToast(loadError.message));
+});

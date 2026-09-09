@@ -30,8 +30,14 @@ def main() -> None:
         min_size=(820, 600),
         background_color="#f5f3ed",
         text_select=True,
+        # Keep the web origin stable so recovery drafts survive app restarts.
+        http_port=5051,
     )
-    webview.start(debug=False)
+    webview.start(
+        debug=False,
+        private_mode=False,
+        storage_path=str(application_support_dir() / "webview"),
+    )
 
 
 if __name__ == "__main__":
