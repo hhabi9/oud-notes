@@ -11,7 +11,7 @@ cask "oud-notes" do
   homepage "https://github.com/hhabi9/oud-notes"
 
   depends_on arch: :arm64
-  depends_on macos: ">= :monterey"
+  depends_on macos: :monterey
   depends_on formula: "gh"
 
   app "Oud Notes.app"
