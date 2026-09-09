@@ -48,6 +48,12 @@ The app bundle and installer are written to `dist/Oud Notes.app` and
 - Full GFM/CommonMark preview with tables, tasks, footnotes, math, Mermaid diagrams, and syntax highlighting
 - Markdown export
 - Responsive layout and dark mode
+- Preferences (gear button or ⌘,): theme, writing font, and note-view zoom
+- Import Markdown/text files or JSON backups; export the full library with metadata
+
+Use ⌘+ / ⌘− to zoom the note view, and ⌘0 to reset it. Preferences are remembered
+on this device. Imports add copies without replacing existing notes. JSON backups
+preserve text and metadata; linked images and other external files are not embedded.
 
 The local database is created at `instance/notes.db` and is excluded from Git.
 

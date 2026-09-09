@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import json
 import sqlite3
 import sys
 from datetime import UTC, datetime
@@ -132,6 +133,45 @@ def create_app(test_config: dict | None = None) -> Flask:
         )
         db.commit()
         return jsonify(serialize_note(find_note(cursor.lastrowid))), 201
+
+    @app.get('/api/backup')
+    def export_backup():
+        notes = [serialize_note(row) for row in get_db().execute('SELECT * FROM notes ORDER BY id')]
+        return Response(json.dumps({'format': 'oud-notes', 'version': 1, 'notes': notes}, ensure_ascii=False),
+                        mimetype='application/json',
+                        headers={'Content-Disposition': 'attachment; filename="oud-notes-backup.json"'})
+
+    @app.post('/api/import')
+    def import_notes():
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict) or payload.get('format') != 'oud-notes' or payload.get('version') != 1:
+            return jsonify(error='Choose a valid Oud Notes backup or Markdown/text files'), 400
+        notes = payload.get('notes')
+        if not isinstance(notes, list) or not notes or len(notes) > 10000:
+            return jsonify(error='Import must contain 1–10,000 notes'), 400
+        rows = []
+        now = utc_now()
+        for note in notes:
+            if (not isinstance(note, dict) or
+                any(not isinstance(note.get(key, ''), str) for key in ('title', 'content', 'folder')) or
+                not isinstance(note.get('tags', []), list) or
+                any(not isinstance(tag, str) for tag in note.get('tags', [])) or
+                not isinstance(note.get('pinned', False), bool)):
+                return jsonify(error='Invalid note in import; no notes were imported'), 400
+            dates = []
+            for key in ('created_at', 'updated_at'):
+                value = note.get(key, now)
+                try:
+                    datetime.fromisoformat(value)
+                except (TypeError, ValueError):
+                    return jsonify(error='Invalid date in import; no notes were imported'), 400
+                dates.append(value)
+            rows.append((note.get('title', '').strip()[:200] or 'Untitled note', note.get('content', ''),
+                         normalize_tags(note.get('tags', [])), note.get('folder', '').strip()[:80],
+                         int(note.get('pinned', False)), *dates))
+        with get_db() as db:
+            db.executemany('INSERT INTO notes (title, content, tags, folder, pinned, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)', rows)
+        return jsonify(imported=len(rows)), 201
 
     @app.get("/api/notes/<int:note_id>")
     def get_note(note_id: int) -> Response:

@@ -53,6 +53,25 @@ class NotesApiTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.get_json(), {"error": "Note not found"})
 
+    def test_backup_import_roundtrip_preserves_notes(self):
+        original = self.client.post('/api/notes', json={'title': 'Study', 'content': '# Hello\n你好', 'folder': 'School', 'tags': ['exam'], 'pinned': True}).get_json()
+        backup = self.client.get('/api/backup')
+        self.assertIn('attachment', backup.headers['Content-Disposition'])
+        response = self.client.post('/api/import', json=backup.get_json())
+        self.assertEqual(response.status_code, 201)
+        notes = self.client.get('/api/notes').get_json()
+        self.assertEqual(len(notes), 2)
+        for note in notes:
+            self.assertEqual({k: v for k, v in note.items() if k != 'id'}, {k: v for k, v in original.items() if k != 'id'})
+
+    def test_import_invalid_batch_is_atomic(self):
+        response = self.client.post('/api/import', json={'format': 'oud-notes', 'version': 1, 'notes': [{'title': 'valid'}, {'content': 42}]})
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(self.client.get('/api/notes').get_json(), [])
+
+    def test_import_rejects_unknown_backup_version(self):
+        self.assertEqual(self.client.post('/api/import', json={'format': 'oud-notes', 'version': 2, 'notes': []}).status_code, 400)
+
     def test_create_rejects_non_object_json(self):
         for payload in (["unexpected"], [], "text", 3, False):
             with self.subTest(payload=payload):

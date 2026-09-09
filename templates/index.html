@@ -36,6 +36,7 @@
       </nav>
 
       <footer class="sidebar-footer">
+        <button class="icon-button" id="preferences-open" aria-label="Preferences" title="Preferences (⌘,)">⚙</button>
         <div><span class="status-dot"></span> Stored on this device</div>
         <button class="icon-button" id="theme-toggle" aria-label="Toggle dark mode">☾</button>
       </footer>
@@ -107,6 +108,19 @@
   </main>
 
   <div class="toast" id="toast" role="status"></div>
+  <dialog id="preferences" aria-labelledby="preferences-title">
+    <form method="dialog"><header class="preferences-header"><h2 id="preferences-title">Preferences</h2><button class="icon-button" aria-label="Close preferences">×</button></header></form>
+    <label class="preference-row">Appearance <select id="pref-theme"><option value="light">Light</option><option value="dark">Dark</option></select></label>
+    <label class="preference-row">Writing font <select id="pref-font"><option value="serif">Serif</option><option value="sans">Sans serif</option><option value="mono">Monospace</option></select></label>
+    <div class="preference-row"><span>Note view zoom</span><div class="zoom-controls"><button id="zoom-out" class="icon-button" aria-label="Zoom out">−</button><button id="zoom-reset" class="text-button" title="Reset zoom">100%</button><button id="zoom-in" class="icon-button" aria-label="Zoom in">+</button></div></div>
+    <p class="preference-help">Zoom: ⌘ + / − · Reset: ⌘ 0</p>
+    <hr><h3>Import &amp; export</h3>
+    <p class="preference-help">Import Markdown (.md), text (.txt), or an Oud Notes backup (.json). Imported notes are added to your library; importing twice creates copies.</p>
+    <div class="transfer-actions"><button class="secondary-button" id="import-open">Import files…</button><button class="secondary-button" id="export-backup">Export all notes…</button></div>
+    <p class="preference-help">Full backups preserve note text, folders, tags, pins, and dates. Use the download button in a note to export Markdown.</p>
+    <p id="transfer-status" role="status"></p>
+    <input id="import-files" type="file" accept=".md,.markdown,.txt,.json" multiple hidden>
+  </dialog>
   <script src="{{ url_for('static', filename='vendor/marked.umd.js') }}" defer></script>
   <script src="{{ url_for('static', filename='vendor/marked-footnote.umd.js') }}" defer></script>
   <script src="{{ url_for('static', filename='vendor/katex.min.js') }}" defer></script>
@@ -115,5 +129,6 @@
   <script src="{{ url_for('static', filename='vendor/highlight.min.js') }}" defer></script>
   <script src="{{ url_for('static', filename='vendor/mermaid.min.js') }}" defer></script>
   <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='preferences.js') }}" defer></script>
 </body>
 </html>
