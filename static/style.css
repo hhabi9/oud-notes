@@ -73,7 +73,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   grid-template-columns: 230px minmax(280px, 350px) 1fr;
   grid-template-rows: minmax(0, 1fr);
   height: 100vh;
-  max-width: 1800px;
   margin: auto;
   background: var(--paper);
   box-shadow: var(--shadow);
@@ -149,7 +148,7 @@ h1 { margin: 0; font-family: Georgia, serif; font-size: 25px; }
 .save-state.saving span { background: var(--warm); animation: pulse 1s infinite; }
 .toolbar-actions { gap: 2px; }
 .text-button { padding: 8px 10px; border-radius: 8px; color: var(--muted); font-size: 12px; }
-.editor-scroll { flex: 1; min-height: 0; width: 100%; margin: 0 auto; padding: 56px max(28px, calc((100% - 670px) / 2)) 20px; overflow-y: auto; overscroll-behavior-y: contain; }
+.editor-scroll { flex: 1; min-height: 0; width: 100%; margin: 0 auto; padding: 40px 28px 20px; overflow-y: auto; overscroll-behavior-y: contain; }
 .title-input { width: 100%; padding: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font: 500 clamp(30px, 4vw, 48px)/1.12 Georgia, serif; }
 .note-meta { display: grid; grid-template-columns: 1fr 1.5fr; gap: 22px; margin: 28px 0 26px; padding: 13px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .note-meta label { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 10px; min-width: 0; color: var(--faint); font-size: 11px; }
